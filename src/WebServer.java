@@ -3,6 +3,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +17,6 @@ public class WebServer {
         HttpServer webServer = HttpServer.create(new InetSocketAddress(serverName, serverPort), 0);
         webServer.createContext("/", new MyHttpHandler());
         webServer.setExecutor(null);
-
 
         System.out.println("## HTTP server started at http://" + serverName + ":" + serverPort + ".");
 
@@ -33,7 +33,7 @@ public class WebServer {
                 doGet(ex);
             }
             if ("POST".equalsIgnoreCase(method)) {
-                //doPost(ex);
+                doPost(ex);
             }
         }
 
@@ -95,7 +95,34 @@ public class WebServer {
                     os.write("</html>".getBytes(StandardCharsets.UTF_8));
                 }
 
-                System.out.println("## GET request for directory => " + ex.getRequestURI().toString());
+                System.out.println("## GET request for directory => " + ex.getRequestURI().toString() + ".");
+            }
+        }
+
+        private void doPost(HttpExchange ex) throws IOException {
+            System.out.println("## do_POST() activated.");
+
+            printHttpRequestDetail(ex);
+            sendHttpResponseHeader(ex);
+
+            int contentLength = Integer.parseInt(ex.getRequestHeaders().getFirst("Content-Length"));
+
+            String postData;
+            try (InputStream is = ex.getRequestBody()) {
+                byte[] data = is.readNBytes(contentLength);
+                postData = new String(data, StandardCharsets.UTF_8);
+            }
+
+            int[] parameter = parameterRetrieval(postData);
+            int result = simpleCalc(parameter[0], parameter[1]);
+
+            try (OutputStream os = ex.getResponseBody()) {
+                String postResponse = "## POST request for calculation => " + parameter[0] + " x "
+                        + parameter[1] + " = " + result;
+                os.write(postResponse.getBytes(StandardCharsets.UTF_8));
+                System.out.println("## POST request data => " + postData + ".");
+                System.out.println("## POST request for calculation => " + parameter[0] + " x "
+                        + parameter[1] + " = " + result + ".");
             }
         }
     }
